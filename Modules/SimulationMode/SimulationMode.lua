@@ -12,7 +12,7 @@ CraftSim.SIMULATION_MODE.recipeData = nil
 ---@type CraftSim.SpecializationData?
 CraftSim.SIMULATION_MODE.specializationData = nil
 
-local print = CraftSim.DEBUG:SetDebugPrint(CraftSim.CONST.DEBUG_IDS.SIMULATION_MODE)
+local print = CraftSim.DEBUG:RegisterDebugID("Modules.SimulationMode")
 
 function CraftSim.SIMULATION_MODE:ResetSpecData()
     CraftSim.SIMULATION_MODE.specializationData = CraftSim.SIMULATION_MODE.recipeData.specializationData:Copy()
@@ -206,20 +206,22 @@ function CraftSim.SIMULATION_MODE:UpdateRequiredReagentsByInputs()
     -- optional/finishing
     recipeData.reagentData:ClearOptionalReagents()
 
-    local possibleSparkItemIDs = {}
-    if recipeData.reagentData:HasSparkSlot() then
-        possibleSparkItemIDs = GUTIL:Map(recipeData.reagentData.sparkReagentSlot.possibleReagents, function(reagent)
-            return reagent.item:GetItemID()
-        end)
+    local possibleRequiredSelectableItemIDs = {}
+    if recipeData.reagentData:HasRequiredSelectableReagent() then
+        possibleRequiredSelectableItemIDs = GUTIL:Map(
+            recipeData.reagentData.requiredSelectableReagentSlot.possibleReagents,
+            function(reagent)
+                return reagent.item:GetItemID()
+            end)
     end
 
     local itemIDs = {}
     for _, optionalReagentItemSelector in pairs(reagentOverwriteFrame.optionalReagentItemSelectors) do
         local itemID = optionalReagentItemSelector.selectedItem and optionalReagentItemSelector.selectedItem:GetItemID()
         if itemID then
-            -- try to set spark if available else put to optional/finishing
-            if tContains(possibleSparkItemIDs, itemID) then
-                recipeData.reagentData.sparkReagentSlot:SetReagent(itemID)
+            -- try to set required selectable if available else put to optional/finishing
+            if tContains(possibleRequiredSelectableItemIDs, itemID) then
+                recipeData.reagentData.requiredSelectableReagentSlot:SetReagent(itemID)
             else
                 table.insert(itemIDs, itemID)
             end
@@ -238,7 +240,7 @@ function CraftSim.SIMULATION_MODE:UpdateSimulationMode()
 end
 
 function CraftSim.SIMULATION_MODE:UpdateRecipeDataBuffsBySimulatedBuffs()
-    local print = CraftSim.DEBUG:SetDebugPrint("BUFFDATA")
+    local print = CraftSim.DEBUG:RegisterDebugID("Modules.SimulationMode.UpdateRecipeDataBuffsBySimulatedBuffs")
     local recipeData = CraftSim.SIMULATION_MODE.recipeData
 
     if not recipeData then return end
@@ -297,10 +299,7 @@ function CraftSim.SIMULATION_MODE:AllocateReagents(recipeData)
         end
     end
 
-
-
-    --- TODO Rework with more beauty when sim mode is reworked
-    for i, finishingSlot in ipairs(recipeData.reagentData.finishingReagentSlots) do
+    for _, finishingSlot in ipairs(recipeData.reagentData.finishingReagentSlots) do
         for _, optionalReagentItemSelector in pairs(reagentOverwriteFrame.optionalReagentItemSelectors) do
             ---@type GGUI.ItemSelector
             local optionalReagentItemSelector = optionalReagentItemSelector

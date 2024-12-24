@@ -2,8 +2,10 @@
 local CraftSim = select(2, ...)
 
 ---@class CraftSim.SalvageReagentSlot : CraftSim.CraftSimObject
+---@overload fun(recipeData: CraftSim.RecipeData): CraftSim.SalvageReagentSlot
 CraftSim.SalvageReagentSlot = CraftSim.CraftSimObject:extend()
 
+---@param recipeData CraftSim.RecipeData
 function CraftSim.SalvageReagentSlot:new(recipeData)
     ---@type ItemMixin[]
     self.possibleItems = {}
@@ -14,14 +16,7 @@ function CraftSim.SalvageReagentSlot:new(recipeData)
     end
 
     self.activeItem = nil
-end
-
-function CraftSim.SalvageReagentSlot:GetCraftingReagentInfo()
-    return {
-        itemID = self.salvageReagentSlot.activeItem:GetItemID(),
-        quantity = self.salvageReagentSlot.requiredQuantity,
-        dataSlotIndex = self.dataSlotIndex,
-    }
+    self.recipeData = recipeData
 end
 
 ---@param itemID number
@@ -68,4 +63,12 @@ function CraftSim.SalvageReagentSlot:GetJSON(indent)
     jb:Add("requiredQuantity", self.requiredQuantity, true)
     jb:End()
     return jb.json
+end
+
+---@return CraftSim.SalvageReagentSlot
+function CraftSim.SalvageReagentSlot:Copy()
+    local copy = CraftSim.SalvageReagentSlot(self.recipeData)
+    copy.activeItem = self.recipeData.reagentData.salvageReagentSlot.activeItem
+    copy.requiredQuantity = self.requiredQuantity
+    return copy
 end

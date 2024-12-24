@@ -19,7 +19,7 @@ CraftSimNO_PRICE_API = { name = "None" }
 CraftSim.PRICE_APIS.available = true
 
 local systemPrint = print
-local print = CraftSim.DEBUG:SetDebugPrint(CraftSim.CONST.DEBUG_IDS.PRICE_APIS)
+local print = CraftSim.DEBUG:RegisterDebugID("Data.PriceAPI")
 
 function CraftSim.PRICE_API:InitPriceSource()
     local loadedSources = CraftSim.PRICE_APIS:GetAvailablePriceSourceAddons()
@@ -202,6 +202,7 @@ function CraftSimTSM:GetItemSaleRate(itemLink)
 end
 
 function CraftSimAUCTIONATOR:GetMinBuyoutByItemID(itemID)
+    if not itemID then return 0 end
     local vendorPrice = Auctionator.API.v1.GetVendorPriceByItemID(CraftSimAddonName, itemID)
     if vendorPrice then
         return vendorPrice
@@ -211,6 +212,7 @@ function CraftSimAUCTIONATOR:GetMinBuyoutByItemID(itemID)
 end
 
 function CraftSimAUCTIONATOR:GetMinBuyoutByItemLink(itemLink)
+    if not itemLink then return 0 end
     local vendorPrice = Auctionator.API.v1.GetVendorPriceByItemLink(CraftSimAddonName, itemLink)
     if vendorPrice then
         return vendorPrice

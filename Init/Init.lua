@@ -12,10 +12,11 @@ CraftSim.LibIcon = LibStub("LibDBIcon-1.0")
 
 local GUTIL = CraftSim.GUTIL
 
+local f = GUTIL:GetFormatter()
 local L = CraftSim.UTIL:GetLocalizer()
 
 ---@class CraftSim.INIT : Frame
-CraftSim.INIT = GUTIL:CreateRegistreeForEvents { "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD" }
+CraftSim.INIT = GUTIL:CreateRegistreeForEvents { "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "TRADE_SKILL_FAVORITES_CHANGED" }
 
 CraftSim.INIT.FRAMES = {}
 
@@ -26,7 +27,24 @@ CraftSim.INIT.currentRecipeID = nil
 CraftSim.INIT.initialLogin = false
 CraftSim.INIT.isReloadingUI = false
 
-local print = CraftSim.DEBUG:SetDebugPrint(CraftSim.CONST.DEBUG_IDS.INIT)
+local print = CraftSim.DEBUG:RegisterDebugID("Init")
+
+function CraftSim.INIT:TRADE_SKILL_FAVORITES_CHANGED(isFavoriteNow, recipeID)
+	-- adapt cached values
+	local crafterUID = CraftSim.UTIL:GetPlayerCrafterUID()
+	local professionInfo = C_TradeSkillUI.GetChildProfessionInfo()
+
+	if not professionInfo then return end
+
+	local profession = professionInfo.profession
+
+	if not profession then return end
+
+
+
+	CraftSim.DB.CRAFTER:UpdateFavoriteRecipe(crafterUID, profession, recipeID, isFavoriteNow)
+end
+
 function CraftSim.INIT:PLAYER_ENTERING_WORLD(initialLogin, isReloadingUI)
 	CraftSim.INIT.initialLogin = initialLogin
 	CraftSim.INIT.isReloadingUI = isReloadingUI
@@ -64,6 +82,7 @@ function CraftSim.INIT:TriggerModuleUpdate(isInit)
 	if freshLoginRecall and isInit then
 		-- hide all frames to reduce flicker on fresh login recall
 		freshLoginRecall = false
+
 		-- hack to make frames appear after fresh login, when some info has not loaded yet although should have after blizzards' Init call
 		C_Timer.After(0.1, function()
 			CraftSim.INIT:TriggerModuleUpdate(true)
@@ -89,7 +108,7 @@ function CraftSim.INIT:TriggerModuleUpdate(isInit)
 	end)
 end
 
-function CraftSim.INIT:HookToEvent()
+function CraftSim.INIT:HookToEvents()
 	if hookedEvent then
 		return
 	end
@@ -176,112 +195,111 @@ function CraftSim.INIT:InitStaticPopups()
 end
 
 function CraftSim.INIT:InitCraftRecipeHooks()
-	---@class CraftSim.INIT.OnCraftData
-	---@field recipeID RecipeID
-	---@field amount number
-	---@field recipeLevel number?
-	---@field craftingReagentInfoTbl CraftingReagentInfo[]?
-	---@field itemTarget ItemLocationMixin?
-	---@field isEnchant boolean?
-	---@field isOrder boolean?
-	---@field orderID number?
-	---@field concentrating boolean?
+	local print = CraftSim.DEBUG:RegisterDebugID("Init.InitCraftRecipeHooks")
 
-	---@param onCraftData CraftSim.INIT.OnCraftData
+	---@param onCraftData CraftSim.OnCraftData
 	local function OnCraft(onCraftData)
-		-- create a recipeData instance with given info and forward it to the corresponding modules
-		-- isRecraft and isWorkOrder is omitted cause cant know here
-		-- but recrafts have different reagents.. so they wont be recognized by comparison anyway
-		-- and if its work order or not is not important for CraftResult records (I hope?)
-		-- If it is important I could just check if the work order frame is open because there is no way a player starts a work order craft without it open!
-		-- conclusion: use work order page to check if its a work order and use (if available) the current main recipeData to check if its a recraft
-		-- new take: problem when recraft recipe is open and crafting in queue.. then it thinks its a recraft... so for now its just always false..
-		local isRecraft = false
-
-		local print = CraftSim.DEBUG:SetDebugPrint(CraftSim.CONST.DEBUG_IDS.CRAFTQ)
-
-		if C_TradeSkillUI.IsNPCCrafting() or C_TradeSkillUI.IsRuneforging() or C_TradeSkillUI.IsTradeSkillLinked() or C_TradeSkillUI.IsTradeSkillGuild() then
+		if C_TradeSkillUI.IsNPCCrafting() or C_TradeSkillUI.IsRuneforging() then
 			return
 		end
 
 		---@type CraftSim.RecipeData
 		local recipeData
-		-- if craftsim did not call the api and we do not have reagents, set it by gui
-		if not CraftSim.CRAFTQ.CraftSimCalledCraftRecipe then
-			--- craft was most probably started via default gui craft button...
-			print("api was called via gui")
-			if CraftSim.INIT.currentRecipeData then
-				isRecraft = CraftSim.INIT.currentRecipeData.isRecraft
-			end
-			-- this means recraft and work order stuff is important
-			recipeData = CraftSim.RecipeData({
-				recipeID = onCraftData.recipeID,
-				isWorkOrder = onCraftData.isOrder,
-				isRecraft = isRecraft,
-			})
-
-			recipeData:SetAllReagentsBySchematicForm()
-			recipeData:SetConcentrationBySchematicForm()
-			-- assume non df recipe or recipe without quality reagents that are all set (cause otherwise crafting would not be possible)
+		-- if craftsim did not call the api and we do not have reagents, use the one from the gui
+		-- still need to check if craft comes from different source (other addons for example)
+		if not CraftSim.CRAFTQ.CraftSimCalledCraftRecipe and CraftSim.INIT.currentRecipeData and CraftSim.INIT.currentRecipeData.recipeID == onCraftData.recipeID then
+			-- craft was most probably started via default gui craft button
+			print("api was called via default gui")
+			recipeData = CraftSim.INIT.currentRecipeData:Copy()
 		else
-			print("api was called via craftsim")
-			-- started via craftsim craft queue
-			recipeData = CraftSim.RecipeData({
-				recipeID = onCraftData.recipeID,
-				isWorkOrder = onCraftData.isOrder,
-				isRecraft = isRecraft,
-			})
-			recipeData:SetReagentsByCraftingReagentInfoTbl(onCraftData.craftingReagentInfoTbl)
-			recipeData:SetNonQualityReagentsMax()
+			-- if it does not match with current recipe data, create a new one based on the data forwarded to the crafting api
+			recipeData = onCraftData:CreateRecipeData()
 		end
 
-		recipeData:SetEquippedProfessionGearSet()
-
-		recipeData.concentrating = onCraftData.concentrating
-
-		recipeData:Update() -- is this necessary? check again if there are performance problems with that
-
-		print("CraftRecipe Hook: ")
-		print(recipeData.reagentData, true)
-
-		CraftSim.CRAFT_RESULTS:OnCraftRecipe(recipeData)
-		CraftSim.CRAFTQ:OnCraftRecipe(recipeData, onCraftData.amount, onCraftData.itemTarget)
+		CraftSim.CRAFTQ:SetCraftedRecipeData(recipeData, onCraftData.amount, onCraftData.itemTargetLocation)
+		CraftSim.CRAFT_LOG:SetCraftedRecipeData(recipeData)
 	end
-	local function OnRecraft()
-		if CraftSim.INIT.currentRecipeData then
-			CraftSim.CRAFT_RESULTS:OnCraftRecipe(CraftSim.INIT.currentRecipeData)
-		end
-	end
+
 	hooksecurefunc(C_TradeSkillUI, "CraftRecipe",
 		function(recipeID, amount, craftingReagentInfoTbl, recipeLevel, orderID, concentrating)
-			---@type CraftSim.INIT.OnCraftData
-			local onCraftData = {
+			OnCraft(CraftSim.OnCraftData {
 				recipeID = recipeID,
 				amount = amount or 1,
 				craftingReagentInfoTbl = craftingReagentInfoTbl or {},
 				recipeLevel = recipeLevel,
-				orderID = orderID,
-				isOrder = orderID ~= nil,
+				orderData = orderID and C_CraftingOrders.GetClaimedOrder(),
 				concentrating = concentrating,
-			}
-			OnCraft(onCraftData)
+				callerData = {
+					api = "CraftRecipe",
+					params = { recipeID, amount, craftingReagentInfoTbl, recipeLevel, orderID, concentrating },
+				}
+			})
 		end)
 	hooksecurefunc(C_TradeSkillUI, "CraftEnchant",
 		function(recipeID, amount, craftingReagentInfoTbl, enchantItemLocation, concentrating)
-			---@type CraftSim.INIT.OnCraftData
-			local onCraftData = {
+			OnCraft(CraftSim.OnCraftData {
 				recipeID = recipeID,
 				amount = amount or 1,
 				craftingReagentInfoTbl = craftingReagentInfoTbl or {},
-				itemTarget = enchantItemLocation,
+				itemTargetLocation = enchantItemLocation,
 				isEnchant = true,
 				concentrating = concentrating,
-			}
-			OnCraft(onCraftData)
+				callerData = {
+					api = "CraftEnchant",
+					params = { recipeID, amount, craftingReagentInfoTbl, enchantItemLocation, concentrating },
+				}
+			})
 		end)
-	hooksecurefunc(C_TradeSkillUI, "RecraftRecipe", OnRecraft)
-	hooksecurefunc(C_TradeSkillUI, "RecraftRecipeForOrder", OnRecraft)
-	hooksecurefunc(C_TradeSkillUI, "CraftSalvage", CraftSim.CRAFT_RESULTS.OnCraftSalvage)
+	hooksecurefunc(C_TradeSkillUI, "RecraftRecipe",
+		function(itemGUID, craftingReagentTbl, removedModifications, applyConcentration)
+			OnCraft(CraftSim.OnCraftData {
+				recipeID = select(1, C_TradeSkillUI.GetOriginalCraftRecipeID(itemGUID)),
+				amount = 1,
+				isRecraft = true,
+				itemGUID = itemGUID,
+				craftingReagentInfoTbl = craftingReagentTbl or {},
+				concentrating = applyConcentration,
+				callerData = {
+					api = "RecraftRecipe",
+					params = { itemGUID, craftingReagentTbl, removedModifications, applyConcentration },
+				}
+			})
+		end)
+	hooksecurefunc(C_TradeSkillUI, "RecraftRecipeForOrder",
+		function(orderID, itemGUID, craftingReagentTbl, removedModifications, applyConcentration)
+			OnCraft(CraftSim.OnCraftData {
+				recipeID = select(1, C_TradeSkillUI.GetOriginalCraftRecipeID(itemGUID)),
+				amount = 1,
+				isRecraft = true,
+				itemGUID = itemGUID,
+				orderData = C_CraftingOrders.GetClaimedOrder(),
+				craftingReagentInfoTbl = craftingReagentTbl or {},
+				concentrating = applyConcentration,
+				callerData = {
+					api = "RecraftRecipe",
+					params = { orderID, itemGUID, craftingReagentTbl, removedModifications, applyConcentration },
+				}
+			})
+		end)
+	hooksecurefunc(C_TradeSkillUI, "CraftSalvage",
+		---@param recipeID RecipeID
+		---@param amount number?
+		---@param itemTargetLocation ItemLocationMixin
+		---@param craftingReagentTbl CraftingReagentInfo[]?
+		---@param applyConcentration boolean
+		function(recipeID, amount, itemTargetLocation, craftingReagentTbl, applyConcentration)
+			OnCraft(CraftSim.OnCraftData {
+				recipeID = recipeID,
+				amount = amount or 1,
+				itemTargetLocation = itemTargetLocation,
+				craftingReagentInfoTbl = craftingReagentTbl or {},
+				concentrating = applyConcentration,
+				callerData = {
+					api = "CraftSalvage",
+					params = { recipeID, amount, itemTargetLocation, craftingReagentTbl, applyConcentration },
+				}
+			})
+		end)
 end
 
 function CraftSim.INIT:ADDON_LOADED(addon_name)
@@ -314,7 +332,7 @@ function CraftSim.INIT:ADDON_LOADED(addon_name)
 		CraftSim.SIMULATION_MODE.UI:Init()
 		CraftSim.PRICE_OVERRIDE.UI:Init()
 		CraftSim.RECIPE_SCAN.UI:Init()
-		CraftSim.CRAFT_RESULTS.UI:Init()
+		CraftSim.CRAFT_LOG.UI:Init()
 		CraftSim.STATISTICS.UI:Init()
 		CraftSim.CUSTOMER_HISTORY.UI:Init()
 		CraftSim.COST_OPTIMIZATION.UI:Init()
@@ -324,9 +342,10 @@ function CraftSim.INIT:ADDON_LOADED(addon_name)
 		CraftSim.COOLDOWNS.UI:Init()
 		CraftSim.CONCENTRATION_TRACKER.UI:Init()
 
-		CraftSim.INIT:HookToEvent()
+		CraftSim.INIT:HookToEvents()
 		CraftSim.INIT:HookToProfessionsFrame()
 		CraftSim.INIT:HookToConcentrationButtons()
+		CraftSim.INIT:HookToProfessionUnlearnedFunction()
 		CraftSim.INIT:HandleAuctionatorHooks()
 		CraftSim.INIT:InitCraftRecipeHooks()
 
@@ -362,13 +381,14 @@ function CraftSim.INIT:HookToProfessionsFrame()
 
 	ProfessionsFrame:HookScript("OnShow",
 		function()
+			CraftSim.DEBUG:StartProfiling("Update Customer History")
 			CraftSim.CUSTOMER_HISTORY.UI:UpdateDisplay()
+			CraftSim.DEBUG:StopProfiling("Update Customer History")
+			CraftSim.CRAFTQ.UI:UpdateDisplay()
 			CraftSim.INIT.lastRecipeID = nil
 			if CraftSim.DB.OPTIONS:Get("OPEN_LAST_RECIPE") then
 				C_Timer.After(1, function()
-					local recipeInfo = ProfessionsFrame.CraftingPage.SchematicForm:GetRecipeInfo()
 					local professionInfo = ProfessionsFrame:GetProfessionInfo()
-					local professionFullName = professionInfo.professionName
 					local profession = professionInfo.parentProfessionName
 					if CraftSim.OPTIONS.lastOpenRecipeID[profession] then
 						C_TradeSkillUI.OpenRecipe(CraftSim.OPTIONS.lastOpenRecipeID[profession])
@@ -386,6 +406,22 @@ function CraftSim.INIT:HookToProfessionsFrame()
 				CraftSim.OPTIONS.lastOpenRecipeID[profession] = recipeInfo.recipeID
 			end
 		end)
+end
+
+function CraftSim.INIT:HookToProfessionUnlearnedFunction()
+	-- will be base skill line id
+
+	hooksecurefunc("AbandonSkill", function(skilllineID)
+		local professionInfo = C_TradeSkillUI.GetProfessionInfoBySkillLineID(skilllineID)
+		if professionInfo then
+			local crafterUID = CraftSim.UTIL:GetPlayerCrafterUID()
+			CraftSim.DEBUG:SystemPrint(f.l("CraftSim: " ..
+				"Removing Cached Data for ") .. crafterUID .. " - " .. f.bb(professionInfo.professionName))
+			local profession = professionInfo.profession
+
+			CraftSim.DB.CRAFTER:RemoveCrafterProfessionData(crafterUID, profession)
+		end
+	end)
 end
 
 local concentrationButtonHooked = false
@@ -447,6 +483,8 @@ function CraftSim.INIT:PLAYER_LOGIN()
 		elseif command == "resetdb" then
 			CraftSimDB = nil
 			C_UI.Reload()
+		elseif command == "quickbuy" then
+			CraftSim.CRAFTQ:AuctionatorQuickBuy()
 		else
 			-- open options if any other command or no command is given
 			Settings.OpenToCategory(CraftSim.OPTIONS.category.ID)
@@ -485,7 +523,8 @@ function CraftSim.INIT:HideAllModules(keepControlPanel)
 	CraftSim.CRAFT_BUFFS.frame:Hide()
 	CraftSim.CRAFT_BUFFS.frameWO:Hide()
 	CraftSim.COOLDOWNS.frame:Hide()
-	CraftSim.CRAFT_RESULTS.frame:Hide()
+	CraftSim.CRAFT_LOG.logFrame:Hide()
+	CraftSim.CRAFT_LOG.advFrame:Hide()
 	CraftSim.CONCENTRATION_TRACKER.frame:Hide()
 	customerHistoryFrame:Hide()
 	priceOverrideFrame:Hide()
@@ -592,7 +631,7 @@ function CraftSim.INIT:TriggerModulesByRecipeType()
 
 		recipeData = CraftSim.RecipeData({
 			recipeID = recipeInfo.recipeID,
-			isWorkOrder = isWorkOrder,
+			orderData = isWorkOrder and ProfessionsFrame.OrdersPage.OrderView.order,
 			isRecraft = isRecraft,
 		})
 
@@ -657,7 +696,7 @@ function CraftSim.INIT:TriggerModulesByRecipeType()
 	showSpecInfo = showSpecInfo and CraftSim.DB.OPTIONS:Get("MODULE_SPEC_INFO")
 	showPriceOverride = showPriceOverride and CraftSim.DB.OPTIONS:Get("MODULE_PRICE_OVERRIDE")
 	showRecipeScan = showRecipeScan and CraftSim.DB.OPTIONS:Get("MODULE_RECIPE_SCAN")
-	showCraftResults = showCraftResults and CraftSim.DB.OPTIONS:Get("MODULE_CRAFT_RESULTS")
+	showCraftResults = showCraftResults and CraftSim.DB.OPTIONS:Get("MODULE_CRAFT_LOG")
 	showCustomerHistory = showCustomerHistory and CraftSim.DB.OPTIONS:Get("MODULE_CUSTOMER_HISTORY")
 	showCostOptimization = showCostOptimization and CraftSim.DB.OPTIONS:Get("MODULE_COST_OPTIMIZATION")
 	showCraftBuffs = showCraftBuffs and CraftSim.DB.OPTIONS:Get("MODULE_CRAFT_BUFFS")
@@ -667,7 +706,8 @@ function CraftSim.INIT:TriggerModulesByRecipeType()
 
 	CraftSim.RECIPE_SCAN.frame:SetVisible(showRecipeScan)
 	CraftSim.EXPLANATIONS.frame:SetVisible(showExplanations)
-	CraftSim.CRAFT_RESULTS.frame:SetVisible(showCraftResults)
+	CraftSim.CRAFT_LOG.logFrame:SetVisible(showCraftResults)
+	CraftSim.CRAFT_LOG.advFrame:SetVisible(CraftSim.DB.OPTIONS:Get("CRAFT_LOG_SHOW_ADV_LOG"))
 	CraftSim.CUSTOMER_HISTORY.frame:SetVisible(showCustomerHistory)
 	CraftSim.COOLDOWNS.frame:SetVisible(showCooldowns)
 	CraftSim.CONCENTRATION_TRACKER.frame:SetVisible(showConcentrationTracker)
@@ -704,11 +744,11 @@ function CraftSim.INIT:TriggerModulesByRecipeType()
 	CraftSim.FRAME:ToggleFrame(CraftSim.COST_OPTIMIZATION.frameWO,
 		showCostOptimization and exportMode == CraftSim.CONST.EXPORT_MODE.WORK_ORDER)
 	if recipeData and showCostOptimization then
-		CraftSim.COST_OPTIMIZATION:UpdateDisplay(recipeData, exportMode)
+		CraftSim.COST_OPTIMIZATION:UpdateDisplay(recipeData)
 	end
 
 	if recipeData and showCraftResults then
-		CraftSim.CRAFT_RESULTS.UI:UpdateRecipeData(recipeData.recipeID)
+		CraftSim.CRAFT_LOG.UI:UpdateAdvancedCraftLogDisplay(recipeData.recipeID)
 	end
 
 	-- AverageProfit Module
@@ -829,7 +869,6 @@ function CraftSim.INIT:InitializeMinimapButton()
 	end)
 end
 
----TODO: Temporary unused, test if problems occur then either reinstate or remove
 --- Since Multicraft seems to be missing on operationInfo on the first call after a fresh login, and seems to be loaded in after the first call,
 --- trigger it for all recipes on purpose when the profession is opened the first time in this session
 function CraftSim.INIT:TriggerRecipeOperationInfoLoadForProfession(professionRecipeIDs, professionID)

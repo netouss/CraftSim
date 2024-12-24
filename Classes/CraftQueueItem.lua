@@ -7,7 +7,7 @@ local GUTIL = CraftSim.GUTIL
 ---@overload fun(options: CraftSim.CraftQueueItem.Options): CraftSim.CraftQueueItem
 CraftSim.CraftQueueItem = CraftSim.CraftSimObject:extend()
 
-local print = CraftSim.DEBUG:SetDebugPrint("CRAFTQ")
+local print = CraftSim.DEBUG:RegisterDebugID("Classes.CraftQueue.CraftQueueItem")
 
 ---@class CraftSim.CraftQueueItem.Options
 ---@field recipeData CraftSim.RecipeData
@@ -41,7 +41,7 @@ end
 
 --- calculates allowedToCraft, canCraftOnce, gearEquipped, correctProfessionOpen, notOnCooldown and craftAbleAmount
 function CraftSim.CraftQueueItem:CalculateCanCraft()
-    CraftSim.DEBUG:StartProfiling('CraftSim.CraftQueueItem:CalculateCanCraft')
+    CraftSim.DEBUG:StartProfiling('CraftQueue.CraftQueueItem.CalculateCanCraft')
     local _, craftAbleAmount = self.recipeData:CanCraft(1)
     self.craftAbleAmount = craftAbleAmount
     self.canCraftOnce = craftAbleAmount > 0
@@ -56,7 +56,7 @@ function CraftSim.CraftQueueItem:CalculateCanCraft()
 
     self.allowedToCraft = self.canCraftOnce and self.gearEquipped and self.correctProfessionOpen and self.notOnCooldown and
         self.isCrafter and self.learned
-    CraftSim.DEBUG:StopProfiling('CraftSim.CraftQueueItem:CalculateCanCraft')
+    CraftSim.DEBUG:StopProfiling('CraftQueue.CraftQueueItem.CalculateCanCraft')
 end
 
 ---@class CraftSim.CraftQueueItem.Serialized
@@ -65,7 +65,7 @@ end
 ---@field concentrating? boolean
 ---@field crafterData CraftSim.CrafterData
 ---@field requiredReagents CraftSim.Reagent.Serialized[]
----@field sparkReagent CraftingReagentInfo?
+---@field requiredSelectableReagent CraftingReagentInfo?
 ---@field optionalReagents CraftingReagentInfo[]
 ---@field professionGearSet CraftSim.ProfessionGearSet.Serialized
 ---@field subRecipeDepth number
@@ -83,8 +83,8 @@ function CraftSim.CraftQueueItem:Serialize()
             crafterData = recipeData.crafterData,
             concentrating = recipeData.concentrating,
             requiredReagents = recipeData.reagentData:SerializeRequiredReagents(),
-            sparkReagent = recipeData.reagentData:HasSparkSlot() and
-                recipeData.reagentData.sparkReagentSlot:GetCraftingReagentInfo(),
+            requiredSelectableReagent = recipeData.reagentData:HasRequiredSelectableReagent() and
+                recipeData.reagentData.requiredSelectableReagentSlot:GetCraftingReagentInfo(),
             optionalReagents = recipeData.reagentData:GetOptionalCraftingReagentInfoTbl(),
             professionGearSet = recipeData.professionGearSet:Serialize(),
             subRecipeDepth = recipeData.subRecipeDepth,
@@ -147,8 +147,9 @@ function CraftSim.CraftQueueItem:Deserialize(serializedData)
 
             recipeData:SetReagentsByCraftingReagentInfoTbl(GUTIL:Concat { requiredReagentsCraftingReagentInfos, serializedCraftQueueItem.optionalReagents })
 
-            if serializedCraftQueueItem.sparkReagent then
-                recipeData.reagentData:SetSparkItem(serializedCraftQueueItem.sparkReagent.itemID)
+            if serializedCraftQueueItem.requiredSelectableReagent then
+                recipeData.reagentData:SetRequiredSelectableReagent(serializedCraftQueueItem.requiredSelectableReagent
+                    .itemID)
             end
 
             recipeData:SetNonQualityReagentsMax()

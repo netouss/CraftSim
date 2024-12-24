@@ -8,7 +8,7 @@ CraftSim.TOPGEAR = {}
 CraftSim.TOPGEAR.IsEquipping = false
 CraftSim.TOPGEAR.EMPTY_SLOT = "EMPTY_SLOT"
 
-local print = CraftSim.DEBUG:SetDebugPrint(CraftSim.CONST.DEBUG_IDS.TOP_GEAR)
+local print = CraftSim.DEBUG:RegisterDebugID("Modules.TopGear")
 
 CraftSim.TOPGEAR.SIM_MODES = {
     PROFIT = CraftSim.CONST.TEXT.TOP_GEAR_SIM_MODES_PROFIT,
@@ -211,11 +211,9 @@ end
 ---@return CraftSim.ProfessionGearSet[] topGearSets
 function CraftSim.TOPGEAR:GetProfessionGearCombinations(recipeData)
     local equippedGear = CraftSim.ProfessionGearSet(recipeData)
-    if recipeData:IsCrafter() then
-        equippedGear:LoadCurrentEquippedSet()
-    else
-        equippedGear:LoadCurrentEquippedSet(recipeData.crafterData)
-    end
+
+    equippedGear:LoadCurrentEquippedSet()
+
     local inventoryGear = CraftSim.TOPGEAR:GetProfessionGearFromInventory(recipeData)
 
     local equippedGearList = GUTIL:Filter(equippedGear:GetProfessionGearList(),
@@ -262,7 +260,6 @@ function CraftSim.TOPGEAR:GetProfessionGearCombinations(recipeData)
                 local partlyEmpty = emptyA or emptyB
                 if bothEmpty or (partlyEmpty or not professionGearA:Equals(professionGearB)) then
                     -- do not match item with itself..
-                    -- todo: somehow neglect order cause it is not important (maybe with temp list to remove items from..)
                     table.insert(gearSlotCombos, { professionGearA, professionGearB })
                 end
             end
@@ -356,7 +353,7 @@ function CraftSim.TOPGEAR:OptimizeTopGear(recipeData, topGearMode)
         local relativeConcentrationValue = concentrationValue - concentrationValuePreviousGear
         local relativeStats = professionGearSet.professionStats:Copy()
         local expectedQuality = recipeData.resultData.expectedQuality
-        local expectedQualityUpgrade = recipeData.resultData.expectedQualityUpgrade
+        local expectedQualityUpgrade = recipeData.resultData.expectedQualityUpgrade -- TODO: Remove or change
         relativeStats:subtract(previousGear.professionStats)
         local result = CraftSim.TopGearResult(professionGearSet, averageProfit, relativeProfit, concentrationValue,
             relativeConcentrationValue, relativeStats,

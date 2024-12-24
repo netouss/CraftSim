@@ -147,35 +147,31 @@ function CraftSim.LOCAL_IT:GetData()
         [CraftSim.CONST.TEXT.SPEC_INFO_WORK_IN_PROGRESS] = "Specializzazioni non ancora ultimate",
 
         -- Crafting Results Frame
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_TITLE] = "Risultati d'Artigianato di CraftSim",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_LOG] = "Resoconto prodotto finale",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_LOG_1] = "Profitto: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_LOG_2] = "Ispirazione!",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_LOG_3] = "Creazione multipla: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_LOG_4] = "Risorse risparmiate!: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_LOG_5] = "Possibilità: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_CRAFTED_ITEMS] = "Oggetti creati",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_SESSION_PROFIT] = "Profitto di sessione",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_RESET_DATA] = "Resetta dati",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_EXPORT_JSON] = "Esporta JSON",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_RECIPE_STATISTICS] = "Statistiche Ricetta",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_NOTHING] = "Nessuna creazione al momento!",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_1] = "Creazioni: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_2] = "Profitto Ø Previsto: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_3] = "Profitto Ø Reale: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_4] = "Profitto Reale: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_5] = "Attivazioni - Reali/Previste: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_6] = "Ispirazione: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_7] = "Creazione Multipla: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_8] = "- Ø Oggetti aggiuntivi: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_9] = "Attivazioni Parsimonia: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_10] = "- Ø Risparmio: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_STATISTICS_11] = "Profitto: ",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_SAVED_REAGENTS] = "Reagenti risparmiati",
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_DISABLE_CHECKBOX] = f.l("Disabilita Registrazione Oggetti Creati"),
-        [CraftSim.CONST.TEXT.CRAFT_RESULTS_DISABLE_CHECKBOX_TOOLTIP] =
-            "Abilitandolo si ferma la registrazione di tutti i risultati delle creazioni e può " ..
-            f.g("migliorare le performance"),
+        [CraftSim.CONST.TEXT.CRAFT_LOG_TITLE] = "Risultati d'Artigianato di CraftSim",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_LOG] = "Resoconto prodotto finale",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_LOG_1] = "Profitto: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_LOG_2] = "Ispirazione!",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_LOG_3] = "Creazione multipla: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_LOG_4] = "Risorse risparmiate!: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_LOG_5] = "Possibilità: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_CRAFTED_ITEMS] = "Oggetti creati",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_SESSION_PROFIT] = "Profitto di sessione",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_RESET_DATA] = "Resetta dati",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_EXPORT_JSON] = "Esporta JSON",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_RECIPE_STATISTICS] = "Statistiche Ricetta",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_NOTHING] = "Nessuna creazione al momento!",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_CALCULATION_COMPARISON_NUM_CRAFTS_PREFIX] = "Creazioni: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_STATISTICS_2] = "Profitto Ø Previsto: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_STATISTICS_3] = "Profitto Ø Reale: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_STATISTICS_4] = "Profitto Reale: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_STATISTICS_5] = "Attivazioni - Reali/Previste: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_STATISTICS_6] = "Ispirazione: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_STATISTICS_7] = "Creazione Multipla: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_STATISTICS_8] = "- Ø Oggetti aggiuntivi: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_STATISTICS_9] = "Attivazioni Parsimonia: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_CALCULATION_COMPARISON_NUM_CRAFTS_PREFIX0] = "- Ø Risparmio: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_CALCULATION_COMPARISON_NUM_CRAFTS_PREFIX1] = "Profitto: ",
+        [CraftSim.CONST.TEXT.CRAFT_LOG_SAVED_REAGENTS] = "Reagenti risparmiati",
 
         -- Stats Weight Frame
         [CraftSim.CONST.TEXT.STAT_WEIGHTS_TITLE] = "Profitto Medio di CraftSim",
@@ -377,8 +373,8 @@ function CraftSim.LOCAL_IT:GetData()
         [CraftSim.CONST.TEXT.CONTROL_PANEL_MODULES_SPECIALIZATION_INFO_LABEL] = "Info Specializzazioni",
         [CraftSim.CONST.TEXT.CONTROL_PANEL_MODULES_SPECIALIZATION_INFO_TOOLTIP] =
         "Mostra come le specializzazioni della tua professione influenzano questa ricetta e permette di simulare ogni possibile configurazione!",
-        [CraftSim.CONST.TEXT.CONTROL_PANEL_MODULES_CRAFT_RESULTS_LABEL] = "Risultati Artigianato",
-        [CraftSim.CONST.TEXT.CONTROL_PANEL_MODULES_CRAFT_RESULTS_TOOLTIP] =
+        [CraftSim.CONST.TEXT.CONTROL_PANEL_MODULES_CRAFT_LOG_LABEL] = "Risultati Artigianato",
+        [CraftSim.CONST.TEXT.CONTROL_PANEL_MODULES_CRAFT_LOG_TOOLTIP] =
         "Mostra rapporti e statistiche dei tuoi oggetti creati!",
         [CraftSim.CONST.TEXT.CONTROL_PANEL_MODULES_COST_OPTIMIZATION_LABEL] = "Dettaglio Costi",
         [CraftSim.CONST.TEXT.CONTROL_PANEL_MODULES_COST_OPTIMIZATION_TOOLTIP] =
@@ -431,9 +427,6 @@ function CraftSim.LOCAL_IT:GetData()
         "Sei sicuro di voler cancellare tutti i dati\ndei client con un totale di 0 pagamenti?",
         [CraftSim.CONST.TEXT.CUSTOMER_HISTORY_DELETE_CUSTOMER_CONFIRMATION_POPUP] =
         "Sei sicuro di voler cancellare tutti i dati\n per %s?",
-        [CraftSim.CONST.TEXT.CUSTOMER_HISTORY_DELETE_CUSTOMER_POPUP_TITLE] = "Cancella Storico Cliente",
-        [CraftSim.CONST.TEXT.CUSTOMER_HISTORY_PURGE_ZERO_TIPS_CONFIRMATION_POPUP_TITLE] =
-        "Cancella Storico Clienti con 0 pagamenti",
         [CraftSim.CONST.TEXT.CUSTOMER_HISTORY_PURGE_DAYS_INPUT_LABEL] = "Intervallo di auto-cancellazione (Giorni)",
         [CraftSim.CONST.TEXT.CUSTOMER_HISTORY_PURGE_DAYS_INPUT_TOOLTIP] =
         "CraftSim cancellerà tutti i clienti con 0 pagamenti quando entrerai in gioco dopo X giorni dall'ultima cancellazione.\nSe impostato a 0, CraftSim non cancellerà mai automaticamente.",

@@ -6,7 +6,7 @@ local GUTIL = CraftSim.GUTIL
 ---@class CraftSim.CraftQueue : CraftSim.CraftSimObject
 CraftSim.CraftQueue = CraftSim.CraftSimObject:extend()
 
-local print = CraftSim.DEBUG:SetDebugPrint("CRAFTQ_CRAFTING")
+local print = CraftSim.DEBUG:RegisterDebugID("Classes.CraftQueue")
 
 function CraftSim.CraftQueue:new()
     ---@type CraftSim.CraftQueueItem[]
@@ -175,6 +175,15 @@ function CraftSim.CraftQueue:Remove(craftQueueItem, removeParentSubcraftInformat
             end
         end
     end
+
+    if craftQueueItem.recipeData:IsWorkOrder() then
+        -- check if claimed if yes release
+        local claimedOrder = C_CraftingOrders.GetClaimedOrder()
+        if claimedOrder and claimedOrder.orderID == craftQueueItem.recipeData.orderData.orderID then
+            C_CraftingOrders.ReleaseOrder(claimedOrder.orderID,
+                craftQueueItem.recipeData.professionData.professionInfo.profession)
+        end
+    end
 end
 
 ---@param prI CraftSim.RecipeData.ParentRecipeInfo
@@ -264,13 +273,46 @@ function CraftSim.CraftQueue:FilterSortByPriority()
     end)
     local sortedCharacterRecipes = GUTIL:Sort(characterRecipesNoAltDependency,
         function(a, b)
-            if claimedOrder and claimedOrder.isFulfillable then
-                local aSubmittable = a.recipeData.orderData and a.recipeData.orderData.orderID == claimedOrder.orderID
-                local bSubmittable = b.recipeData.orderData and b.recipeData.orderData.orderID == claimedOrder.orderID
-                if aSubmittable and not bSubmittable then
-                    return true
-                elseif not aSubmittable and bSubmittable then
-                    return false
+            -- sort work orders on top of non subrecipe recipes
+            local aWorkOrder = a.recipeData:IsWorkOrder()
+            local bWorkOrder = b.recipeData:IsWorkOrder()
+
+            local aSubRecipe = a.recipeData:IsSubRecipe()
+            local bSubRecipe = b.recipeData:IsSubRecipe()
+
+            -- subrecipes always on top
+            if aSubRecipe and not bSubRecipe then
+                return true
+            elseif not aSubRecipe and bSubRecipe then
+                return false
+            end
+
+            if a.correctProfessionOpen and not b.correctProfessionOpen then
+                return true
+            elseif not a.correctProfessionOpen and b.correctProfessionOpen then
+                return false
+            end
+
+            -- work order recipes always above non work orders
+            if aWorkOrder and not bWorkOrder then
+                return true
+            elseif bWorkOrder and not aWorkOrder then
+                return false
+            end
+
+            -- now recipes are either both work orders or both not work orders
+
+            -- if both work orders
+            if aWorkOrder and bWorkOrder then
+                -- submittable order always above non submittable (if there is a fulfillable order)
+                if claimedOrder and claimedOrder.isFulfillable then
+                    local aSubmittable = a.recipeData.orderData.orderID == claimedOrder.orderID
+                    local bSubmittable = b.recipeData.orderData.orderID == claimedOrder.orderID
+                    if aSubmittable and not bSubmittable then
+                        return true
+                    elseif not aSubmittable and bSubmittable then
+                        return false
+                    end
                 end
             end
 
@@ -331,7 +373,7 @@ end
 ---@return boolean HasActiveSubRecipes
 ---@return boolean HasActiveSubRecipesFromAlts
 function CraftSim.CraftQueue:RecipeHasActiveSubRecipesInQueue(recipeData)
-    local print = CraftSim.DEBUG:SetDebugPrint("SUB_RECIPE_DATA")
+    local print = CraftSim.DEBUG:RegisterDebugID("SUB_RECIPE_DATA")
     local activeSubRecipes = false
     local crafterUID = CraftSim.UTIL:GetPlayerCrafterUID()
 
@@ -379,7 +421,8 @@ function CraftSim.CraftQueue:RecipeHasActiveSubRecipesInQueue(recipeData)
 end
 
 ---@param recipeData CraftSim.RecipeData
-function CraftSim.CraftQueue:OnRecipeCrafted(recipeData)
+---@param craftingItemResultData CraftingItemResultData
+function CraftSim.CraftQueue:OnRecipeCrafted(recipeData, craftingItemResultData)
     local craftQueueItem = self:FindRecipe(recipeData)
 
     if not craftQueueItem then return end
@@ -390,11 +433,40 @@ function CraftSim.CraftQueue:OnRecipeCrafted(recipeData)
 
     if craftQueueItem.recipeData:GetReagentUID() ~= recipeData:GetReagentUID() then return end
 
-    -- decrement by one and refresh list (only when not work order recipe)
+    local ignoreIngenuityProc = CraftSim.DB.OPTIONS:Get("CRAFTQUEUE_IGNORE_INGENUITY_PROCS") and
+        craftingItemResultData.hasIngenuityProc
+
+    if recipeData.concentrating and recipeData.concentrationData then
+        recipeData.concentrationData:Update()
+    end
+
+    -- decrement by one and refresh list (only when not work order recipe and when not ignoring ingenuity)
     if not craftQueueItem.recipeData.orderData then
-        local newAmount = CraftSim.CRAFTQ.craftQueue:SetAmount(recipeData, -1, true)
-        if newAmount and newAmount <= 0 and CraftSim.DB.OPTIONS:Get("CRAFTQUEUE_FLASH_TASKBAR_ON_CRAFT_FINISHED") then
-            FlashClientIcon()
+        local ignoreIngenuityProc = CraftSim.DB.OPTIONS:Get("CRAFTQUEUE_IGNORE_INGENUITY_PROCS") and
+            craftingItemResultData.hasIngenuityProc
+        local autoRemoveConcentrationUsedUp = CraftSim.DB.OPTIONS:Get("CRAFTQUEUE_REMOVE_ON_ALL_CONCENTRATION_USED")
+        local concentrationUsedUp = false
+
+
+
+        if recipeData.concentrating and recipeData.concentrationData and autoRemoveConcentrationUsedUp then
+            local remainingConcentration = recipeData.concentrationData:GetCurrentAmount()
+            concentrationUsedUp = remainingConcentration < recipeData.concentrationCost
+        end
+
+        if concentrationUsedUp then
+            local cqI = CraftSim.CRAFTQ.craftQueue:FindRecipe(recipeData)
+            if cqI then
+                CraftSim.CRAFTQ.craftQueue:Remove(cqI)
+                if CraftSim.DB.OPTIONS:Get("CRAFTQUEUE_FLASH_TASKBAR_ON_CRAFT_FINISHED") then
+                    FlashClientIcon()
+                end
+            end
+        elseif not ignoreIngenuityProc then
+            local newAmount = CraftSim.CRAFTQ.craftQueue:SetAmount(recipeData, -1, true)
+            if newAmount and newAmount <= 0 and CraftSim.DB.OPTIONS:Get("CRAFTQUEUE_FLASH_TASKBAR_ON_CRAFT_FINISHED") then
+                FlashClientIcon()
+            end
         end
     end
     CraftSim.CRAFTQ.UI:UpdateDisplay()

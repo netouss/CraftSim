@@ -10,7 +10,7 @@ CraftSim.PRICE_SOURCE.noPriceDataLinks = {}
 CraftSim.PRICE_SOURCE.overrideResultProfits = {} -- mapped by qualityID
 CraftSim.PRICE_SOURCE.overrideCraftingCosts = nil
 
-local print = CraftSim.DEBUG:SetDebugPrint(CraftSim.CONST.DEBUG_IDS.PRICEDATA)
+local print = CraftSim.DEBUG:RegisterDebugID("Data.PriceSource")
 
 ---@class CraftSim.PriceData.PriceInfo
 ---@field ahPrice number
@@ -93,7 +93,7 @@ function CraftSim.PRICE_SOURCE:GetMinBuyoutByItemID(itemID, isReagent, forceAHPr
     return priceInfo.ahPrice, priceInfo
 end
 
----Wrapper for Price Source addons price fetch by itemLink (used mostly by gear and craft results)
+---Wrapper for Price Source addons price fetch by itemLink (used mostly by gear and craft log)
 ---@param itemLink string
 ---@param isReagent? boolean Use TSM Expression for reagents
 ---@param considerSubCrafts? boolean

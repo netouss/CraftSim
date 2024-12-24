@@ -2,17 +2,36 @@
 local CraftSim = select(2, ...)
 
 local GUTIL = CraftSim.GUTIL
+local f = GUTIL:GetFormatter()
 
 CraftSim.UTIL = {}
 
 CraftSim.UTIL.frameLevel = 100
 
-local print = CraftSim.DEBUG:SetDebugPrint(CraftSim.CONST.DEBUG_IDS.UTIL)
+local print = CraftSim.DEBUG:RegisterDebugID("Util")
 
 function CraftSim.UTIL:NextFrameLevel()
     local frameLevel = CraftSim.UTIL.frameLevel
     CraftSim.UTIL.frameLevel = CraftSim.UTIL.frameLevel + 50
     return frameLevel
+end
+
+---@param orderType Enum.CraftingOrderType
+---@return string
+function CraftSim.UTIL:GetOrderTypeText(orderType)
+    local orderTypeText = CreateAtlasMarkup("Professions-Crafting-Orders-Icon", 15, 15)
+
+    if orderType == Enum.CraftingOrderType.Npc then
+        orderTypeText = string.format("%s %s", orderTypeText, f.bb("NPC"))
+    elseif orderType == Enum.CraftingOrderType.Guild then
+        orderTypeText = string.format("%s %s", orderTypeText, f.g("Guild"))
+    elseif orderType == Enum.CraftingOrderType.Personal then
+        orderTypeText = string.format("%s %s", orderTypeText, f.bb("Pers."))
+    elseif orderType == Enum.CraftingOrderType.Public then
+        orderTypeText = string.format("%s %s", orderTypeText, f.b("Public"))
+    end
+
+    return orderTypeText
 end
 
 -- thx ketho forum guy
@@ -461,4 +480,22 @@ end
 function CraftSim.UTIL:FormatMoney(copperValue, useColor, percentRelativeTo)
     return GUTIL:FormatMoney(copperValue, useColor, percentRelativeTo, true,
         CraftSim.DB.OPTIONS:Get("MONEY_FORMAT_USE_TEXTURES"))
+end
+
+---@param profession Enum.Profession
+function CraftSim.UTIL:IsProfessionLearned(profession)
+    local learnedProfessions = { GetProfessions() };
+
+    local skillLineIDs = GUTIL:Map(learnedProfessions, function(professionIndex)
+        return select(7, GetProfessionInfo(professionIndex))
+    end)
+
+    if GUTIL:Some(skillLineIDs, function(skillLineID)
+            local info = C_TradeSkillUI.GetProfessionInfoBySkillLineID(skillLineID)
+            return info and info.profession == profession
+        end) then
+        return true
+    end
+
+    return false
 end

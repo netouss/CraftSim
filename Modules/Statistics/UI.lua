@@ -15,7 +15,7 @@ CraftSim.STATISTICS.UI = {}
 
 CraftSim.STATISTICS.UI.CONCENTRATION_GRAPH_LINE_COLOR = { 0.93, 0.79, 0.0, 0.8 }
 
-local print = CraftSim.DEBUG:SetDebugPrint("STATISTICS")
+local print = CraftSim.DEBUG:RegisterDebugID("Modules.Statistics.UI")
 
 function CraftSim.STATISTICS.UI:Init()
     local sizeX = 500
@@ -309,7 +309,8 @@ function CraftSim.STATISTICS.UI:InitConcentrationTab(tab)
     ---@class CraftSim.STATISTICS.UI.PROBABILITY_TABLE_TAB.CONTENT : Frame
     local content = tab.content
 
-    content.concentrationCurveGraph = CraftSim.LibGraph:CreateGraphLine("TestLineGraph", content, "TOP", "TOP", 0,
+    content.concentrationCurveGraph = CraftSim.LibGraph:CreateGraphLine("ConcentrationCurveGraph", content, "TOP", "TOP",
+        0,
         -20, 450, 320)
     content.concentrationCurveGraph:SetXAxis(0, 1)
     content.concentrationCurveGraph:SetYAxis(0, 1)
